@@ -5,3 +5,4 @@ python-dotenv
 sentence-transformers
 PyPDF2
 faiss-cpu
+install langchain-community
