@@ -6,3 +6,4 @@ sentence-transformers
 PyPDF2
 faiss-cpu
 langchain-community
+pypdf
