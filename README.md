@@ -1,36 +1,77 @@
-# PDF Chatbot 🚀
+# PDF Chatbot
 
-A Streamlit-based conversational AI assistant that lets you ask questions to your PDFs—and remembers your conversation context. Powered by Groq’s hosted LLM, FAISS for vector retrieval, and LangChain for chaining and memory.
+An AI-powered Streamlit application that lets you **chat with any PDF** and retain conversational context across turns. Leveraging LangChain, FAISS, and Groq’s hosted LLM, this tool transforms static documents into interactive knowledge assistants.
 
 ---
 
-## 🔍 Features
+## Overview
 
-- **PDF Upload & Indexing**  
-  Upload a PDF and automatically split, embed, and index its contents with FAISS.
+PDF Chatbot ingests a PDF file, indexes its contents into a vector store, and answers user queries by combining:
+
+1. **Retrieval**: FAISS-powered semantic search over PDF embeddings  
+2. **Generation**: Groq’s `ChatGroq` LLM for fluent, on-point responses  
+3. **Memory**: Session-state storage of prior messages to handle follow-ups naturally  
+
+The result is a responsive Q&A interface that “remembers” what you’ve already asked and refers back to the document when needed.
+
+---
+
+## Features
+
+- **Document Understanding**  
+  - Splits PDF pages into chunks, embeds them via a pretrained HuggingFace model, and indexes with FAISS for lightning-fast lookups.
 
 - **Conversational Memory**  
-  Maintains chat history in session state, so follow-up questions “remember” earlier context.
+  - Stores each user and bot turn in session state so follow-up questions (“What about the previous section?”) stay in context.
 
-- **Groq LLM Integration**  
-  Uses `langchain-groq`’s `ChatGroq` for inference—no local GPU required.
+- **Seamless LLM Integration**  
+  - Sends both retrieved document snippets and chat history to Groq’s hosted model (`ChatGroq`)—no GPU setup or local model downloads.
 
-- **Simple Deployment**  
-  Configurable via `.env` (local) and Streamlit’s secrets (Cloud) for secure key management.
+- **On-Demand PDF Indexing**  
+  - Upload any PDF in the sidebar; once indexed, you can immediately begin querying its content.
+
+- **Single-File Deployment**  
+  - All logic lives in `app.py`; configuration via `.env` (for local) or Streamlit secrets (for production).
 
 ---
 
-## 📂 Repository Structure
+## Architecture
 
-qna-chatbot/
-├── app.py
-├── requirements.txt
-├── .gitignore
-├── .env # NOT committed (local only)
-└── .streamlit/
-└── secrets.toml # committed with placeholder values
+```mermaid
+flowchart LR
+  subgraph User Interface
+    A[Streamlit UI] -->|upload| B[PDF Uploader]
+    A -->|ask| E[Input Form]
+    E --> F[Chat History Display]
+  end
 
-## 📝 Usage
-1. Upload a PDF via the sidebar.
-2. Type your question in the chat box and hit “Send.”
-3. Continue the conversation—the bot retains context.
+  B --> C[Temp PDF File] --> D[PDF Loader & Splitter] --> G[FAISS Index]
+  E --> H{Chain?}
+  H -->|PDF indexed| I[ConversationalRetrievalChain]
+  H -->|No PDF| J[LLM-only Fallback]
+  I --> K[ChatGroq] --> F
+  J --> K --> F
+
+  subgraph Storage
+    G
+    L[Session State: messages]
+  end
+```
+
+## Folder Structure
+qna-chatbot/<br>
+├── app.py                   # Streamlit app entrypoint<br>
+├── requirements.txt         # Python dependencies<br>
+├── .gitignore               # Ignores .env, cache files<br>
+├── .env                     # Local-only secrets (git-ignored)<br>
+└── .streamlit/<br>
+    *  └── secrets.toml         # Placeholder for production secrets<br>
+
+## Usage
+1. Upload a PDF via the left sidebar.
+2. Ask any question about its contents in the chat box and hit Send.
+3. Follow up with additional queries—your previous messages and the document context are woven into each answer.
+
+## Security & Secrets
+**Local: store GROQ_API_KEY and GROQ_MODEL in a .env file (ignored by Git).**
+**Production: configure the same keys in Streamlit Cloud’s Settings → Secrets (or commit a secrets.toml with placeholder values).**
