@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 
-# Env and secrets
+# Environments and secrets
 .env
 .streamlit/secrets.toml
 
