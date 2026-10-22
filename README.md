@@ -1,80 +1,104 @@
-# 📄 PDF Chatbot 🤖
+# QnA Chatbot V2
 
-An AI-powered Streamlit application that lets you **chat with any PDF** and retain conversational context across turns. Leveraging LangChain, FAISS, and Groq’s hosted LLM, this tool transforms static documents into interactive knowledge assistants.
+A PDF question-answering app built with Streamlit, local embeddings, FAISS, hybrid retrieval, and a Groq-hosted language model. Upload a text-based PDF, ask questions in natural language, inspect the retrieved excerpts, and see page references in the answer.
 
----
+## Features
 
-## ✨ Overview
+- **PDF ingestion:** extracts text by page, splits it into overlapping chunks, and retains page/source metadata.
+- **Local embeddings:** uses `sentence-transformers/all-MiniLM-L6-v2` on CPU.
+- **Hybrid retrieval:** combines semantic similarity with BM25-style keyword relevance using Reciprocal Rank Fusion (RRF); returns up to four excerpts.
+- **Conversational follow-ups:** rewrites follow-up questions into standalone search queries using the conversation history.
+- **Grounded answer prompt:** instructs the language model to answer from retrieved excerpts and use `[Page N]` citations.
+- **Source inspection:** displays the retrieved PDF excerpts under each answer.
+- **Basic safeguards:** 20 MB upload limit, 300-page limit, duplicate-upload detection, and clear errors for PDFs without extractable text.
+- **Regression tests:** covers lexical tokenization, BM25 ranking, hybrid ranking, result limits, and empty-index handling.
 
-PDF Chatbot ingests a PDF file, indexes its contents into a vector store, and answers user queries by combining:
+## Architecture
 
-1. 🔍 **Retrieval**  
-   FAISS-powered semantic search over PDF embeddings  
-2. 🧠 **Generation**  
-   Groq’s `ChatGroq` LLM for fluent, on-point responses  
-3. 💬 **Memory**  
-   Session-state storage of prior messages to handle follow-ups naturally  
-
-The result is a responsive Q&A interface that “remembers” what you’ve already asked and refers back to the document when needed.
-
----
-
-## 🚀 Features
-
-- **Document Understanding**  
-  - Splits PDF pages into chunks, embeds them via a pretrained HuggingFace model, and indexes with FAISS for lightning-fast lookups.
-
-- **Conversational Memory**  
-  - Stores each user and bot turn in session state so follow-up questions (“What about the previous section?”) stay in context.
-
-- **Seamless LLM Integration**  
-  - Sends both retrieved document snippets and chat history to Groq’s hosted model (`ChatGroq`)—no GPU setup or local model downloads.
-
-- **On-Demand PDF Indexing**  
-  - Upload any PDF in the sidebar; once indexed, you can immediately begin querying its content.
-
-- **Single-File Deployment**  
-  - All logic lives in `app.py`; configuration via `.env` (for local) or Streamlit secrets (for production).
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-flowchart LR
-  subgraph User Interface
-    A[Streamlit UI] -->|upload| B[PDF Uploader]
-    A -->|ask| E[Input Form]
-    E --> F[Chat History Display]
-  end
-
-  B --> C[Temp PDF File] --> D[PDF Loader & Splitter] --> G[FAISS Index]
-  E --> H{Chain?}
-  H -->|PDF indexed| I[ConversationalRetrievalChain]
-  H -->|No PDF| J[LLM-only Fallback]
-  I --> K[ChatGroq] --> F
-  J --> K --> F
-
-  subgraph Storage
-    G
-    L[Session State: messages]
-  end
+```text
+PDF upload
+    ↓
+Page-wise text extraction (pypdf)
+    ↓
+Overlapping text chunks + page/source metadata
+    ↓
+Local sentence-transformer embeddings
+    ↓
+FAISS inner-product index ─────────────┐
+                                       ├─→ RRF hybrid ranking → Top 4 excerpts
+BM25-style keyword ranking ────────────┘                         ↓
+                                                   Groq-hosted LLM
+                                                   + conversation history
+                                                              ↓
+                                                Answer + page citations
+                                                + inspectable excerpts
 ```
 
-## 📂 Folder Structure
-qna-chatbot/<br>
-├── app.py                   # Streamlit app entrypoint<br>
-├── requirements.txt         # Python dependencies<br>
-├── .gitignore               # Ignores .env, cache files<br>
-├── .env                     # Local-only secrets (git-ignored)<br>
-└── .streamlit/<br>
-    *  └── secrets.toml         # Placeholder for production secrets<br>
+PDF extraction and embedding/index construction run locally. The question and retrieved excerpts are sent to the configured Groq model to generate the answer, so this is **not a fully offline or fully local LLM application**.
 
-## 🎯 Usage
-1. Upload a PDF via the left sidebar.
-2. Ask any question about its contents in the chat box and hit Send.
-3. Follow up with additional queries—your previous messages and the document context are woven into each answer.
+## Requirements
 
-## 🔒 Security & Secrets
-**Local: store GROQ_API_KEY and GROQ_MODEL in a .env file (ignored by Git).**
-**Production: configure the same keys in Streamlit Cloud’s Settings → Secrets (or commit a secrets.toml with placeholder values).**
+- Python compatible with the versions pinned in `requirements.txt`
+- A Groq API key
+- Internet access for Groq requests and the initial download of the embedding model
+
+## Run locally on Windows
+
+Open Anaconda Prompt or a terminal in the project folder:
+
+```bat
+conda create -n qna-v2 python=3.13 -y
+conda activate qna-v2
+python -m pip install -r requirements.txt
+```
+
+Create a `.env` file in the project root (use `.env.example` as a template) and set your key:
+
+```dotenv
+GROQ_API_KEY=put_your_own_key_here
+GROQ_MODEL=openai/gpt-oss-20b
+```
+
+Keep `.env` private. Do not commit it or share screenshots/logs that expose the key. The app also supports Streamlit secrets for hosted deployments.
+
+Start the app:
+
+```bat
+streamlit run app.py --server.fileWatcherType=none
+```
+
+Then open the local URL printed by Streamlit, usually `http://localhost:8501`.
+
+## Tests and checks
+
+Run the retrieval regression suite and basic project checks from the project root:
+
+```bat
+python -m py_compile app.py retrieval.py tests\test_retrieval.py
+python -m unittest discover -s tests -v
+python -m pip check
+git diff --check
+```
+
+The retrieval unit tests do not call Groq or measure end-to-end answer accuracy. Use a small set of representative questions against a known PDF for a manual smoke test as well.
+
+## Current limitations
+
+- Scanned/image-only PDFs are not OCR-processed; the file must contain extractable text.
+- Retrieval can miss relevant passages, and a language model can still produce an incomplete answer or an imperfect page citation. Verify important answers against the displayed excerpts.
+- The four-excerpt retrieval limit favors concise context but can omit evidence spread across many pages.
+- Exact, current information that is absent from the uploaded document cannot be established from that document alone.
+- Answer generation requires access to the configured Groq model and is subject to API availability, quota, and model changes.
+
+## Demo checklist
+
+1. Start the app and upload a text-based PDF.
+2. Confirm that the page/chunk indexing status appears.
+3. Ask one direct factual question and confirm that retrieved excerpts are available.
+4. Ask a follow-up such as “What is the minimum duration?” after asking about programme duration.
+5. Ask something not specified in the PDF and check that the response acknowledges the gap instead of inventing a precise fact.
+6. Keep the source excerpt expander available when presenting an answer so the evidence can be inspected live.
+
+## Tech stack
+
+Python · Streamlit · LangChain Core · ChatGroq · Sentence Transformers · FAISS CPU · NumPy · pypdf · python-dotenv
