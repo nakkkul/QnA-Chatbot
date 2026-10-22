@@ -1,4 +1,4 @@
-# QnA Chatbot V2
+# QnA Chatbot 
 
 **Upload a PDF and ask questions in everyday language.** The chatbot can help you summarize a document, find details, explore important dates, and ask follow-up questions. Answers include page references and a way to inspect the passages used to prepare them.
 
