@@ -1,6 +1,19 @@
 # QnA Chatbot V2
 
-A PDF question-answering app built with Streamlit, local embeddings, FAISS, hybrid retrieval, and a Groq-hosted language model. Upload a text-based PDF, ask questions in natural language, inspect the retrieved excerpts, and see page references in the answer.
+**Upload a PDF and ask questions in everyday language.** The chatbot can help you summarize a document, find details, explore important dates, and ask follow-up questions. Answers include page references and a way to inspect the passages used to prepare them.
+
+You do not need to know any technical terms to use the app: choose a PDF, select an example question or type your own, and read the answer. The app currently supports PDFs with selectable text up to 20 MB and 300 pages; scanned pages and image-only PDFs are not supported yet.
+
+## Using the app
+
+1. Choose a PDF in the left-hand panel.
+2. Wait while the app prepares the document. Larger PDFs may take longer.
+3. Select one of the example questions or type a question in your own words.
+4. Open **View passages used for this answer** to see the PDF text that supported the response.
+
+The chatbot can make mistakes or miss relevant details. Check important information against the displayed PDF passages. The app sends your question and selected relevant passages to an online AI service to draft an answer, so avoid uploading confidential or sensitive documents.
+
+This is a showcase project built with Streamlit, local embeddings, FAISS hybrid retrieval, and a Groq-hosted language model. Technical setup and implementation details follow.
 
 ## Features
 
